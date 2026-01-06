@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMU - Accel+Gyro Fusion - Component Research Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .query-title {
+            font-size: 2.2em;
+            margin-bottom: 15px;
+            font-weight: 300;
+        }
+        
+        .query-details {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .component-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .component-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        
+        .component-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .component-name {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .manufacturer {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        
+        .resources-section {
+            padding: 20px;
+        }
+        
+        .resource-type {
+            margin-bottom: 20px;
+        }
+        
+        .resource-type:last-child {
+            margin-bottom: 0;
+        }
+        
+        .resource-type-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .resource-item {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 0 6px 6px 0;
+            transition: background-color 0.2s ease;
+        }
+        
+        .resource-item:hover {
+            background: #e9ecef;
+        }
+        
+        .pdf-item {
+            border-left-color: #e74c3c;
+        }
+        
+        .repo-item {
+            border-left-color: #27ae60;
+        }
+        
+        .resource-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            line-height: 1.3;
+        }
+        
+        .resource-url {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 0.9em;
+            word-break: break-all;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .resource-url:hover {
+            text-decoration: underline;
+        }
+        
+        .resource-description {
+            color: #666;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        
+        .resource-type-badge {
+            background: #95a5a6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            margin-left: 10px;
+        }
+        
+        .pdf-badge {
+            background: #e74c3c;
+        }
+        
+        .repo-badge {
+            background: #27ae60;
+        }
+        
+        .no-resources {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 40px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        @media (max-width: 768px) {
+            .components-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .query-title {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="query-title">IMU - Accel+Gyro Fusion</h1>
+            <div class="query-details">
+                <strong>Query:</strong> Category: Sensor | Component_Class: IMU | Component_Name: Accel+Gyro Fusion
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number">14</span>
+                    <span class="stat-label">Components Found</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">27</span>
+                    <span class="stat-label">PDF Documents</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">20</span>
+                    <span class="stat-label">GitHub Repositories</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">27,197</span>
+                    <span class="stat-label">Tokens Used</span>
+                </div>
+            </div>
+        </div>
+<div class="components-grid">
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">ADIS1657x</div>
+                    <div class="manufacturer">Analog Devices</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Analog Devices no-OS drivers</div>
+                            <a href="https://github.com/analogdevicesinc/no-OS" target="_blank" class="resource-url">https://github.com/analogdevicesinc/no-OS</a>
+
+                            <div class="resource-description">Official software drivers in C for Analog Devices components, including ADIS1657x, for systems without an operating system. This repository provides reference projects and drivers for lower-end processors and microcontrollers.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">BMI160</div>
+                    <div class="manufacturer">Bosch Sensortec</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">BMI160 Sensor API</div>
+                            <a href="https://github.com/boschsensortec/BMI160_SensorAPI" target="_blank" class="resource-url">https://github.com/boschsensortec/BMI160_SensorAPI</a>
+
+                            <div class="resource-description">Official Bosch Sensortec BMI160 sensor driver. This repository provides the low-level C API for the BMI160 inertial measurement unit. Although archived, it remains the canonical reference implementation from the manufacturer.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">BMI270</div>
+                    <div class="manufacturer">Bosch Sensortec</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">1</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">BMI270 Datasheet (PDF Finder)</div>
+                            <a href="https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf" target="_blank" class="resource-url">https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Bosch Sensortec BMI270 Sensor API</div>
+                            <a href="https://github.com/BoschSensortec/BMI270_SensorAPI" target="_blank" class="resource-url">https://github.com/BoschSensortec/BMI270_SensorAPI</a>
+
+                            <div class="resource-description">This repository contains Bosch Sensortec's official BMI270 inertial measurement unit's sensor API, providing the core C driver and reference implementation.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">BMI323</div>
+                    <div class="manufacturer">Bosch Sensortec</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">2</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">BMI323 Datasheet (PDF Finder)</div>
+                            <a href="https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf" target="_blank" class="resource-url">https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">BMI323 Datasheet (PDF Finder)</div>
+                            <a href="https://www.bosch-sensortec.com/media/boschsensortec/downloads/handling_soldering_mounting_instructions/bst-mis-hs000.pdf" target="_blank" class="resource-url">https://www.bosch-sensortec.com/media/boschsensortec/downloads/handling_soldering_mounting_instructions/bst-mis-hs000.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Bosch Sensortec BMI3XY Sensor API</div>
+                            <a href="https://github.com/boschsensortec/BMI3XY_SensorAPI" target="_blank" class="resource-url">https://github.com/boschsensortec/BMI3XY_SensorAPI</a>
+
+                            <div class="resource-description">Official sensor API and drivers for BMI3XY series, including BMI323.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">BMI330</div>
+                    <div class="manufacturer">Bosch Sensortec</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">1</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">BMI330 Datasheet (PDF Finder)</div>
+                            <a href="https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi330-ds000.pdf" target="_blank" class="resource-url">https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi330-ds000.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">BMI3XY Sensor API</div>
+                            <a href="https://github.com/boschsensortec/BMI3XY_SensorAPI" target="_blank" class="resource-url">https://github.com/boschsensortec/BMI3XY_SensorAPI</a>
+
+                            <div class="resource-description">This repository contains the official Sensor API for the Bosch Sensortec BMI3XY series of Inertial Measurement Units (IMUs), including the BMI330. It provides core drivers and functions for accessing and configuring the sensor.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">BNO086</div>
+                    <div class="manufacturer">CEVA</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">1</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">SH-2 Reference Manual</div>
+                            <a href="https://www.ceva-ip.com/wp-content/uploads/SH-2-Reference-Manual.pdf" target="_blank" class="resource-url">https://www.ceva-ip.com/wp-content/uploads/SH-2-Reference-Manual.pdf</a>
+                            <div class="resource-description">Type: User Manual</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">SH2 Interface Library</div>
+                            <a href="https://github.com/ceva-dsp/sh2" target="_blank" class="resource-url">https://github.com/ceva-dsp/sh2</a>
+
+                            <div class="resource-description">Official SH2 interface library for Hillcrest Laboratories, Inc BNO08x and FSP200 products, providing application-level sensor hub functionality.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">SparkFun BNO08x Arduino Library</div>
+                            <a href="https://github.com/sparkfun/SparkFun_BNO08x_Arduino_Library" target="_blank" class="resource-url">https://github.com/sparkfun/SparkFun_BNO08x_Arduino_Library</a>
+
+                            <div class="resource-description">A widely adopted Arduino library for the BNO08x IMU, built upon the original library by Nathan Seidle and incorporating improvements from the CEVA-DSP SH2 Driver.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">ASM330LHHXG1</div>
+                    <div class="manufacturer">STMicroelectronics</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">7</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5985-asm330lhhxg1-high-accuracy-6-axis-automotive-imu-for-car-electronic-control-units-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5985-asm330lhhxg1-high-accuracy-6-axis-automotive-imu-for-car-electronic-control-units-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5986-asm330lhhxg1-finite-state-machine-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5986-asm330lhhxg1-finite-state-machine-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5987-asm330lhhxg1-machine-learning-core-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5987-asm330lhhxg1-machine-learning-core-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/datasheet/asm330lhhxg1.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/datasheet/asm330lhhxg1.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/user_manual/um2116-steval-mki109v3-professional-mems-tool-motherboard-for-mems-adapter-boards-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/user_manual/um2116-steval-mki109v3-professional-mems-tool-motherboard-for-mems-adapter-boards-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/user_manual/um3233-getting-started-with-mems-studio-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/user_manual/um3233-getting-started-with-mems-studio-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ASM330LHHXG1 Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/user_manual/um3420-steval-mki109d-professional-mems-tool-motherboard-for-mems-adapter-boards-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/user_manual/um3420-steval-mki109d-professional-mems-tool-motherboard-for-mems-adapter-boards-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">asm330lhhxg1 platform independent driver</div>
+                            <a href="https://github.com/STMicroelectronics/asm330lhhxg1-pid" target="_blank" class="resource-url">https://github.com/STMicroelectronics/asm330lhhxg1-pid</a>
+
+                            <div class="resource-description">Sensor driver for ASM330LHHXG1 sensor written in C programming language, platform independent and compliant with MISRA standard.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">asm330lhh platform independent driver</div>
+                            <a href="https://github.com/STMicroelectronics/asm330lhh-pid" target="_blank" class="resource-url">https://github.com/STMicroelectronics/asm330lhh-pid</a>
+
+                            <div class="resource-description">Sensor driver for ASM330LHH sensor written in C programming language, platform independent and compliant with MISRA standard.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">ISM330BX</div>
+                    <div class="manufacturer">STMicroelectronics</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">5</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ISM330BX Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6109-ism330bx-6-axis-imu-with-wide-bandwidth-low-noise-accelerometer-embedded-sensor-fusion-and-ai-for-industrial-applications-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6109-ism330bx-6-axis-imu-with-wide-bandwidth-low-noise-accelerometer-embedded-sensor-fusion-and-ai-for-industrial-applications-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ISM330BX Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6123-ism330bx-finite-state-machine-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6123-ism330bx-finite-state-machine-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ISM330BX Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6124-ism330bx-machine-learning-core-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6124-ism330bx-machine-learning-core-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ISM330BX Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/datasheet/ism330bx.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/datasheet/ism330bx.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">ISM330BX Datasheet (PDF Finder)</div>
+                            <a href="https://www.st.com/resource/en/technical_note/tn0018-design-and-soldering-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/technical_note/tn0018-design-and-soldering-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">ism330bx platform independent driver based on Standard C language and compliant with MISRA C</div>
+                            <a href="https://github.com/STMicroelectronics/ism330bx-pid" target="_blank" class="resource-url">https://github.com/STMicroelectronics/ism330bx-pid</a>
+
+                            <div class="resource-description">Official platform-independent driver for the ISM330BX sensor, written in Standard C language and compliant with MISRA C. It provides the core sensor driver files for integration into projects.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">LSM6DSOX</div>
+                    <div class="manufacturer">STMicroelectronics</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">4</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN5273: LSM6DSOX Finite State Machine</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5273-lsm6dsox-finite-state-machine-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5273-lsm6dsox-finite-state-machine-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">LSM6DSOX: 6-axis IMU (inertial measurement unit) with embedded AI: always-on 3-axis accelerometer and 3-axis gyro datasheet</div>
+                            <a href="https://www.st.com/resource/en/datasheet/lsm6dsox.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/datasheet/lsm6dsox.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN5272: LSM6DSOX always-on 3-axis accelerometer and 3-axis gyroscope</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5272-lsm6dsox-always-on-3-axis-accelerometer-and-3-axis-gyroscope-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5272-lsm6dsox-always-on-3-axis-accelerometer-and-3-axis-gyroscope-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN5259: LSM6DSOX Machine Learning Core</div>
+                            <a href="https://www.st.com/resource/en/application_note/an5259-lsm6dsox-machine-learning-core-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an5259-lsm6dsox-machine-learning-core-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Linux Kernel Driver for ST LSM6DSX (including LSM6DSOX)</div>
+                            <a href="https://github.com/torvalds/linux/tree/master/drivers/iio/imu/st_lsm6dsx" target="_blank" class="resource-url">https://github.com/torvalds/linux/tree/master/drivers/iio/imu/st_lsm6dsx</a>
+
+                            <div class="resource-description">Official Linux kernel driver for STMicroelectronics LSM6DSX series IMUs, including support for the LSM6DSOX. This driver is part of the Industrial I/O (IIO) subsystem in the Linux kernel.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">LSM6DSOX Platform Independent Driver</div>
+                            <a href="https://github.com/STMicroelectronics/lsm6dsox-pid" target="_blank" class="resource-url">https://github.com/STMicroelectronics/lsm6dsox-pid</a>
+
+                            <div class="resource-description">Platform independent driver for LSM6DSOX sensor based on Standard C language and compliant with MISRA standard. This repository contains the sensor driver files (.h and .c) and examples of usage.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">LSM6DSV320X</div>
+                    <div class="manufacturer">STMicroelectronics</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">4</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN6119 - LSM6DSV320X: 6-axis IMU with AI, high-g accelerometer and embedded sensor fusion for</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6119-lsm6dsv320x-6axis-imu-with-ai-highg-accelerometer-and-embedded-sensor-fusion-for-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6119-lsm6dsv320x-6axis-imu-with-ai-highg-accelerometer-and-embedded-sensor-fusion-for-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN6291 - LSM6DSV320X: finite state machine</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6291-lsm6dsv320x-finite-state-machine-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6291-lsm6dsv320x-finite-state-machine-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">AN6292 - LSM6DSV320X: machine learning core</div>
+                            <a href="https://www.st.com/resource/en/application_note/an6292-lsm6dsv320x-machine-learning-core-stmicroelectronics.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/application_note/an6292-lsm6dsv320x-machine-learning-core-stmicroelectronics.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">LSM6DSV320X: 6-axis IMU (inertial measurement unit) with dual accelerometer up to 320 g and embedded AI for activity tracking and high-impact sensing</div>
+                            <a href="https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" target="_blank" class="resource-url">https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">LSM6DSV320X Rust Driver</div>
+                            <a href="https://github.com/STMicroelectronics/lsm6dsv320x-rs" target="_blank" class="resource-url">https://github.com/STMicroelectronics/lsm6dsv320x-rs</a>
+
+                            <div class="resource-description">Official platform-agnostic, no_std-compatible driver for the ST LSM6DSV320X IMU in Rust, supporting both I2C and SPI communication interfaces.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">lsm6dsv320x platform independent driver based on Standard C language and compliant with MISRA C</div>
+                            <a href="https://github.com/STMicroelectronics/lsm6dsv320x-pid" target="_blank" class="resource-url">https://github.com/STMicroelectronics/lsm6dsv320x-pid</a>
+
+                            <div class="resource-description">Official platform-independent driver for the LSM6DSV320X sensor written in C programming language, compliant with MISRA C.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">IAM-20680HV</div>
+                    <div class="manufacturer">TDK InvenSense</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Linux driver for TDK InvenSense automotive IAM-20680 sensors family</div>
+                            <a href="https://github.com/tdk-invn-oss/automotive.linux.iam20680.driver" target="_blank" class="resource-url">https://github.com/tdk-invn-oss/automotive.linux.iam20680.driver</a>
+
+                            <div class="resource-description">Official Linux driver for the TDK InvenSense automotive IAM-20680 sensors family, which includes the IAM-20680HV. This repository is maintained by TDK InvenSense.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">ICM-42686-P</div>
+                    <div class="manufacturer">TDK InvenSense</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Zephyr Project RTOS TDK InvenSense ICM4268X Driver</div>
+                            <a href="https://github.com/zephyrproject-rtos/zephyr" target="_blank" class="resource-url">https://github.com/zephyrproject-rtos/zephyr</a>
+
+                            <div class="resource-description">The official Zephyr RTOS repository includes a generic driver for the TDK InvenSense ICM4268X series motion sensors, encompassing the ICM42686. This driver is a widely adopted, open-source C-language implementation for embedded systems.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">TDK InvenSense ICM45686 Embedded Motion Driver (eMD)</div>
+                            <a href="https://github.com/tdk-invn-oss/motion.mcu.icm45686.driver" target="_blank" class="resource-url">https://github.com/tdk-invn-oss/motion.mcu.icm45686.driver</a>
+
+                            <div class="resource-description">An official C-language reference driver from TDK InvenSense for the ICM45686 consumer motion sensor, part of their embedded Motion Driver (eMD) software, targeting microcontroller-based applications. While not explicitly for the ICM-42686-P, it represents a generic, official driver for a closely related IMU in the same family.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">ICM-42688-V</div>
+                    <div class="manufacturer">TDK InvenSense</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">1</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Collection of Arduino sketches for TDK's combo accel/gyro motion sensor</div>
+                            <a href="https://github.com/kriswiner/ICM42688" target="_blank" class="resource-url">https://github.com/kriswiner/ICM42688</a>
+
+                            <div class="resource-description">A widely adopted collection of Arduino sketches and drivers for the TDK InvenSense ICM-42688 series, providing basic configuration, self-tests, calibration, and sensor fusion using the Madgwick algorithm.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="component-card">
+                <div class="component-header">
+                    <div class="component-name">MPU-6000</div>
+                    <div class="manufacturer">TDK InvenSense</div>
+                </div>
+                
+                <div class="resources-section">
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            📄 PDF Documents
+                            <span class="resource-type-badge pdf-badge">2</span>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">MPU-6000 and MPU-6050 Product Specification Revision 3.4</div>
+                            <a href="https://invensense.tdk.com/wp-content/uploads/2015/02/MPU-6000-Datasheet1.pdf" target="_blank" class="resource-url">https://invensense.tdk.com/wp-content/uploads/2015/02/MPU-6000-Datasheet1.pdf</a>
+                            <div class="resource-description">Type: Datasheet</div>
+                        </div>
+
+                        <div class="resource-item pdf-item">
+                            <div class="resource-title">MPU-6000/MPU-6050 9-Axis Evaluation Board User Guide</div>
+                            <a href="https://www.invensense.com/wp-content/uploads/2015/02/AN-MPU-6000EVB.pdf" target="_blank" class="resource-url">https://www.invensense.com/wp-content/uploads/2015/02/AN-MPU-6000EVB.pdf</a>
+                            <div class="resource-description">Type: Application Note</div>
+                        </div>
+
+                    </div>
+
+                    <div class="resource-type">
+                        <div class="resource-type-title">
+                            🔗 GitHub Repositories
+                            <span class="resource-type-badge repo-badge">2</span>
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">ESP32 MPU Driver</div>
+                            <a href="https://github.com/natanaeljr/esp32-MPU-driver" target="_blank" class="resource-url">https://github.com/natanaeljr/esp32-MPU-driver</a>
+
+                            <div class="resource-description">A comprehensive ESP32 library for various InvenSense MPU chips, including MPU6000, MPU6050, MPU6500, MPU9150, and MPU9250, supporting both SPI and I2C communication protocols.</div>
+
+                        </div>
+
+                        <div class="resource-item repo-item">
+                            <div class="resource-title">Arduino Library for MPU6x00 (MPU6000/MPU6500)</div>
+                            <a href="https://github.com/simondlevy/MPU6x00" target="_blank" class="resource-url">https://github.com/simondlevy/MPU6x00</a>
+
+                            <div class="resource-description">A simple, header-only Arduino library for the InvenSense MPU6000 and MPU6500 inertial measurement units using the SPI bus.</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+</div>
+    </div>
+</body>
+</html>
